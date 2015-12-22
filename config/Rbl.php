@@ -3,6 +3,7 @@
 return [
     'collector' => [
         'name'          => 'Rbl',
+        'description'   => 'Collects data from RBL lists to generate events',
         'enabled'       => true,
     ],
 
