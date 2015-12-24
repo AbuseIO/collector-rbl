@@ -94,8 +94,8 @@ class Rbl extends Collector
 
         foreach ($feeds as $feedName => $feedConfig) {
             $validator = Validator::make(
-                [ array_merge($feedConfig, ['feedname' => $feedName]) ],
-                [ $this->rulesFeed ]
+                array_merge($feedConfig, ['feedname' => $feedName]),
+                $this->rulesFeed
             );
 
             if ($validator->fails()) {
