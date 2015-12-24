@@ -18,7 +18,7 @@ return [
          * Mode setting
          */
         'modes'          => [
-            'asns',
+            //'asns',
             //'netblocks',
             //'ipaddresses',
             'tickets',

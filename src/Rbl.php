@@ -2,6 +2,7 @@
 
 namespace AbuseIO\Collectors;
 
+use AbuseIO\Models\Ticket;
 use Validator;
 
 class Rbl extends Collector
@@ -65,6 +66,7 @@ class Rbl extends Collector
 
             if($this->allowedModes[$mode]) {
                 $config = config("{$this->configBase}.collector.{$mode}");
+
                 if (empty($config) || !is_array($config)) {
                     return $this->failed(
                         "Configuration error detected. The settings for mode {$mode} is empty or not an array"
@@ -93,23 +95,128 @@ class Rbl extends Collector
                     }
                 }
             }
-        }
 
-        switch($modes) {
-            case "asns":
+            switch($mode) {
+                case "asns":
+                    $this->scanAsn($config);
+                    break;
+                case "netblocks":
+                    $this->scanNetblock($config);
+                    break;
+                case "ipaddresses":
+                    $this->scanAddresses($config);
+                    break;
+                case "tickets":
+                    $this->scanTickets();
+                    break;
+            }
 
-                break;
-            case "netblocks":
-
-                break;
-            case "ipaddresses":
-
-                break;
-            case "tickets":
-
-                break;
         }
 
         return $this->success();
+    }
+
+    /*
+     * Retrieve a list of netblocks based on the ASN and kick off scanNetblock for each
+     * @internal: keep a record of netblocks done, to prevent duplicate work
+     */
+    private function scanAsn($asns) {
+        $netblocks = [];
+
+        foreach ($asns as $asn) {
+            $dns = dns_get_record("as{$asn}.ascc.dnsbl.bit.nl", DNS_TXT);
+            foreach($dns as $key => $entry) {
+                if (!in_array($entry, $netblocks)) {
+                    $this->scanNetblock($netblocks);
+
+                    $netblocks[] = $entry['txt'];
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /*
+     * Retrieve a list of addresses based on a netblock and kick off scanAddress
+     */
+    private function scanNetblock($netblocks) {
+
+        foreach ($netblocks as $netblock) {
+            $range = $this->getAddressRange($netblock);
+            $rangeAddresses = [];
+
+            for($pos = $range['begin']; $pos <= $range['end']; $pos++) {
+                $ip = long2ip($pos);
+                if(substr($ip, - 2) !== '.0' && substr($ip, - 4) !== '.255') {
+                    $rangeAddresses[] = $ip;
+                }
+            }
+
+            $this->scanAddresses($rangeAddresses);
+        }
+    }
+
+    /*
+     * Build array with first and last address of a netblock based on CIDR
+     */
+    private function getAddressRange($netblock) {
+        $t = explode('/', $netblock);
+        $addr = $t[0];
+        $cidr = $t[1];
+
+        $corr=( pow(2, 32) - 1)-(pow(2, 32 - $cidr) - 1 );
+        $first=ip2long($addr) & ($corr);
+        $length=pow(2, 32 - $cidr) - 1;
+
+        return [
+            'begin'  => $first,
+            'end'   => $first + $length,
+        ];
+
+    }
+    /*
+     * Use array with addresses and kick of scanAddress
+     */
+    private function scanAddresses($addresses) {
+        foreach ($addresses as $address) {
+            $this->scanAddress($address);
+        }
+    }
+
+    /*
+     * Retrieve a list of addresses based on open tickets and kick off scanAddress
+     */
+    private function scanTickets() {
+        $tickets = Ticket::where('status_id', '!=', '2')->get();
+
+        foreach ($tickets as $ticket) {
+            $this->scanAddress($ticket->ip);
+        }
+    }
+
+    /*
+     * Scan the address using a DNS request
+     */
+    private function scanAddress($address) {
+        if (!filter_var($address, FILTER_VALIDATE_IP) === false) {
+            $addressReverse = implode('.', array_reverse(preg_split('/\./', $address)));
+
+            // TODO move into config
+            $rbls = [
+                ['zone' => 'xbl.spamhaus.org']
+            ];
+            foreach ($rbls as $rbl) {
+                $lookup = $addressReverse . '.' . $rbl['zone'] . '.';
+
+                if ($result = gethostbyname($lookup)) {
+                    if ($result != $lookup) {
+                        // TODO add event;
+                    }
+                }
+            }
+        }
+
+        die();
     }
 }
