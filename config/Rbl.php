@@ -18,10 +18,10 @@ return [
          * Mode setting
          */
         'modes'          => [
-            //'asns',
+            'asns',
             //'netblocks',
             //'ipaddresses',
-            'tickets',
+            //'tickets',
         ],
 
         /*
@@ -39,14 +39,43 @@ return [
 
     ],
 
+    /*
+     * Method can be either 'dns' or 'file'. If set to file, the zonefile must be set to the RBLDNSD file
+     */
     'feeds' => [
-        'Default' => [
-            'class'     => 'test',
+        'zen.spamhaus.org' => [
+            'name'      => 'Spamhaus',
+            'class'     => 'RBL Listed',
             'type'      => 'Abuse',
             'enabled'   => true,
             'fields'    => [
-                'test'  => 'test',
+                //
             ],
+            'filters'   => [
+                //
+            ],
+            'information' => [
+                'delisting url' => 'https://www.spamhaus.org/lookup/',
+            ],
+            'method'    => 'dns',
+            'zonefile'  => '',
+        ],
+        'bl.spamcop.net' => [
+            'name'      => 'Spamcop',
+            'class'     => 'RBL Listed',
+            'type'      => 'Abuse',
+            'enabled'   => true,
+            'fields'    => [
+                //
+            ],
+            'filters'   => [
+                //
+            ],
+            'information' => [
+                'delisting url' => 'https://www.spamcop.net/bl.shtml',
+            ],
+            'method'    => 'dns',
+            'zonefile'  => '',
         ],
     ],
 ];

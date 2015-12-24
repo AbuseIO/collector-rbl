@@ -2,13 +2,13 @@
 
 namespace AbuseIO\Collectors;
 
-use AbuseIO\Models\Ticket;
 use Validator;
+use AbuseIO\Models\Ticket;
 
 class Rbl extends Collector
 {
     /**
-     * The allowed modes of operation of the scanner
+     * The allowed modes of operation of the scanner with a setting if they required validations
      *
      * @var array
      */
@@ -20,15 +20,43 @@ class Rbl extends Collector
     ];
 
     /**
+     * The allowed methods of operation of the scanner with a setting if they required validations
+     *
+     * @var array
+     */
+    protected $allowedMethods = [
+        'dns'           => false,
+        'file'          => true,
+    ];
+
+    /**
      * The validations for each mode
      *
      * @var array
      */
-    protected $validate = [
+    protected $rulesConfig = [
         'asns'          => 'required|string',
         'netblocks'     => 'required|string',
         'ipaddresses'   => 'required|string',
         'tickets'       => 'required|string',
+    ];
+
+    /**
+     * The validations for each feed
+     *
+     * @var array
+     */
+    protected $rulesFeed = [
+        'feedname'      => 'required|string',
+        'name'          => 'required|string',
+        'class'         => 'required|abuseclass',
+        'type'          => 'required|abusetype',
+        'enabled'       => 'required|boolean',
+        'fields'        => 'sometimes|array',
+        'filters'       => 'sometimes|array',
+        'information'   => 'sometimes|array',
+        'method'        => 'required|string',
+        'zonefile'      => 'sometimes|isfile',
     ];
 
     /**
@@ -59,6 +87,26 @@ class Rbl extends Collector
             return $this->failed('No mode of operation configured, or mode config invalid');
         }
 
+        $feeds = array_change_key_case(config("{$this->configBase}.feeds"), CASE_LOWER);
+        if (empty($feeds) || !is_array($feeds)) {
+            return $this->failed('No RBL feeds configured, or feed config invalid');
+        }
+
+        foreach ($feeds as $feedName => $feedConfig) {
+            $validator = Validator::make(
+                [ array_merge($feedConfig, ['feedname' => $feedName]) ],
+                [ $this->rulesFeed ]
+            );
+
+            if ($validator->fails()) {
+                return $this->failed(implode(' ', $validator->messages()->all()));
+            }
+        }
+
+        /*
+         * For each configured mode kick of a scanning process.
+         * Todo: Look into multithreading this in DNS mode
+         */
         foreach($modes as $mode) {
             if(!array_key_exists($mode, $this->allowedModes)) {
                 return $this->failed("Configuration error detected. Mode {$mode} is not an option");
@@ -75,25 +123,17 @@ class Rbl extends Collector
 
                 foreach ($config as $configElement) {
                     $validator = Validator::make(
-                        [
-                            $mode => $configElement
-                        ],
-                        [
-                            $mode => $this->validate[$mode]
-                        ]
+                        [ $mode => $configElement ],
+                        [ $mode => $this->rulesConfig[$mode] ]
                     );
 
                     if ($validator->fails()) {
-                        $messages = $validator->messages();
-
-                        $message = '';
-                        foreach ($messages->all() as $messagePart) {
-                            $message .= $messagePart;
-                        }
-
-                        return $this->failed($message);
+                        return $this->failed(implode(' ', $validator->messages()->all()));
                     }
                 }
+
+            } else {
+                continue;
             }
 
             switch($mode) {
