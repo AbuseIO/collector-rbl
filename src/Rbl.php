@@ -8,6 +8,13 @@ use AbuseIO\Models\Ticket;
 class Rbl extends Collector
 {
     /**
+     * A value to store the feed configuration after validations passed.
+     *
+     * @var array
+     */
+    private $feeds = [ ];
+
+    /**
      * The allowed modes of operation of the scanner with a setting if they required validations
      *
      * @var array
@@ -47,16 +54,17 @@ class Rbl extends Collector
      * @var array
      */
     protected $rulesFeed = [
-        'feedname'      => 'required|string',
         'name'          => 'required|string',
+        'zone'          => 'required|string',
         'class'         => 'required|abuseclass',
         'type'          => 'required|abusetype',
         'enabled'       => 'required|boolean',
         'fields'        => 'sometimes|array',
         'filters'       => 'sometimes|array',
         'information'   => 'sometimes|array',
+        'codes'         => 'required|array',
         'method'        => 'required|string',
-        'zonefile'      => 'sometimes|isfile',
+        'zonefile'      => 'sometimes|file',
     ];
 
     /**
@@ -70,9 +78,7 @@ class Rbl extends Collector
     }
 
     /**
-     * Parse attachments
-     * TODO: extend validations for each mode
-     * TODO: actually do scanning in the case/switch method
+     * Scan RBL zones
      *
      * @return array    Returns array with failed or success data
      *                  (See collector-common/src/Collector.php) for more info.
@@ -87,14 +93,14 @@ class Rbl extends Collector
             return $this->failed('No mode of operation configured, or mode config invalid');
         }
 
-        $feeds = array_change_key_case(config("{$this->configBase}.feeds"), CASE_LOWER);
+        $feeds = config("{$this->configBase}.feeds");
         if (empty($feeds) || !is_array($feeds)) {
             return $this->failed('No RBL feeds configured, or feed config invalid');
         }
 
         foreach ($feeds as $feedName => $feedConfig) {
             $validator = Validator::make(
-                array_merge($feedConfig, ['feedname' => $feedName]),
+                array_merge($feedConfig, ['name' => $feedName]),
                 $this->rulesFeed
             );
 
@@ -102,10 +108,10 @@ class Rbl extends Collector
                 return $this->failed(implode(' ', $validator->messages()->all()));
             }
         }
+        $this->feeds = $feeds;
 
         /*
          * For each configured mode kick of a scanning process.
-         * Todo: Look into multithreading this in DNS mode
          */
         foreach($modes as $mode) {
             if(!array_key_exists($mode, $this->allowedModes)) {
@@ -242,21 +248,48 @@ class Rbl extends Collector
         if (!filter_var($address, FILTER_VALIDATE_IP) === false) {
             $addressReverse = implode('.', array_reverse(preg_split('/\./', $address)));
 
-            // TODO move into config
-            $rbls = [
-                ['zone' => 'xbl.spamhaus.org']
-            ];
-            foreach ($rbls as $rbl) {
-                $lookup = $addressReverse . '.' . $rbl['zone'] . '.';
+            foreach ($this->feeds as $feedName => $feedData) {
+                $this->feedName = $feedName;
 
-                if ($result = gethostbyname($lookup)) {
-                    if ($result != $lookup) {
-                        // TODO add event;
+                if ($this->isKnownFeed() && $this->isEnabledFeed()) {
+                    $lookup = $addressReverse . '.' . $feedData['zone'] . '.';
+
+                    if ($result = gethostbyname($lookup)) {
+                        if ($result != $lookup) {
+                            // If config is empty, we fall back to this
+                            $reason = 'SPAM Sending host';
+
+                            // Set the config default reason if available
+                            if (array_key_exists('default', $feedData['codes'])) {
+                                $reason = $feedData['codes']['default'];
+                            }
+
+                            // Set the config specific reason if available
+                            if (array_key_exists($result, $feedData['codes'])) {
+                                $reason = $feedData['codes'][$result];
+                            }
+
+                            $this->events[] = [
+                                'source'        => $feedName,
+                                'ip'            => $address,
+                                'domain'        => false,
+                                'uri'           => false,
+                                'class'         => $feedData['class'],
+                                'type'          => $feedData['type'],
+                                // This prevents multiple events on the same day. So info blob has a scan time and this a report time
+                                'timestamp'     => strtotime('0:00'),
+                                'information'   => json_encode(
+                                    array_merge($feedData['information'], [ 'reason' => $reason ])
+                                ),
+                            ];
+
+                            print_r($this->events);
+                        }
                     }
                 }
             }
+        } else {
+            $this->warningCount++;
         }
-
-        die();
     }
 }
