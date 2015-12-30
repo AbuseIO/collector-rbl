@@ -5,6 +5,10 @@ namespace AbuseIO\Collectors;
 use Validator;
 use AbuseIO\Models\Ticket;
 
+/**
+ * Class Rbl
+ * @package AbuseIO\Collectors
+ */
 class Rbl extends Collector
 {
     /**
@@ -113,12 +117,12 @@ class Rbl extends Collector
         /*
          * For each configured mode kick of a scanning process.
          */
-        foreach($modes as $mode) {
-            if(!array_key_exists($mode, $this->allowedModes)) {
+        foreach ($modes as $mode) {
+            if (!array_key_exists($mode, $this->allowedModes)) {
                 return $this->failed("Configuration error detected. Mode {$mode} is not an option");
             }
 
-            if($this->allowedModes[$mode]) {
+            if ($this->allowedModes[$mode]) {
                 $config = config("{$this->configBase}.collector.{$mode}");
 
                 if (empty($config) || !is_array($config)) {
@@ -162,16 +166,20 @@ class Rbl extends Collector
         return $this->success();
     }
 
-    /*
+    /**
      * Retrieve a list of netblocks based on the ASN and kick off scanNetblock for each
      * @internal: keep a record of netblocks done, to prevent duplicate work
+     *
+     * @param array $asns
+     * @return boolean
      */
-    private function scanAsn($asns) {
+    private function scanAsn($asns)
+    {
         $netblocks = [];
 
         foreach ($asns as $asn) {
             $dns = dns_get_record("as{$asn}.ascc.dnsbl.bit.nl", DNS_TXT);
-            foreach($dns as $key => $entry) {
+            foreach ($dns as $key => $entry) {
                 if (!in_array($entry, $netblocks)) {
                     $this->scanNetblock($netblocks);
 
@@ -183,30 +191,40 @@ class Rbl extends Collector
         return true;
     }
 
-    /*
+    /**
      * Retrieve a list of addresses based on a netblock and kick off scanAddress
+     *
+     * @param array $netblocks
+     * @return boolean
      */
-    private function scanNetblock($netblocks) {
+    private function scanNetblock($netblocks)
+    {
 
         foreach ($netblocks as $netblock) {
             $range = $this->getAddressRange($netblock);
             $rangeAddresses = [];
 
-            for($pos = $range['begin']; $pos <= $range['end']; $pos++) {
+            for ($pos = $range['begin']; $pos <= $range['end']; $pos++) {
                 $ip = long2ip($pos);
-                if(substr($ip, - 2) !== '.0' && substr($ip, - 4) !== '.255') {
+                if (substr($ip, - 2) !== '.0' && substr($ip, - 4) !== '.255') {
                     $rangeAddresses[] = $ip;
                 }
             }
 
             $this->scanAddresses($rangeAddresses);
         }
+
+        return true;
     }
 
-    /*
+    /**
      * Build array with first and last address of a netblock based on CIDR
+     *
+     * @param string $netblock
+     * @return array netblockinfo
      */
-    private function getAddressRange($netblock) {
+    private function getAddressRange($netblock)
+    {
         $t = explode('/', $netblock);
         $addr = $t[0];
         $cidr = $t[1];
@@ -221,30 +239,46 @@ class Rbl extends Collector
         ];
 
     }
-    /*
+
+    /**
      * Use array with addresses and kick of scanAddress
+     *
+     * @param array $addresses
+     * @return boolean
      */
-    private function scanAddresses($addresses) {
+    private function scanAddresses($addresses)
+    {
         foreach ($addresses as $address) {
             $this->scanAddress($address);
         }
+
+        return true;
     }
 
-    /*
+    /**
      * Retrieve a list of addresses based on open tickets and kick off scanAddress
+     *
+     * @return boolean
      */
-    private function scanTickets() {
+    private function scanTickets()
+    {
         $tickets = Ticket::where('status_id', '!=', '2')->get();
 
         foreach ($tickets as $ticket) {
             $this->scanAddress($ticket->ip);
         }
+
+        return true;
     }
 
-    /*
+    /**
      * Scan the address using a DNS request
+     *
+     * @param string $address
+     * @return boolean
      */
-    private function scanAddress($address) {
+    private function scanAddress($address)
+    {
         if (!filter_var($address, FILTER_VALIDATE_IP) === false) {
             $addressReverse = implode('.', array_reverse(preg_split('/\./', $address)));
 
@@ -276,7 +310,10 @@ class Rbl extends Collector
                                 'uri'           => false,
                                 'class'         => $feedData['class'],
                                 'type'          => $feedData['type'],
-                                // This prevents multiple events on the same day. So info blob has a scan time and this a report time
+                                /*
+                                 * This prevents multiple events on the same day. So info
+                                 * blob has a scan time and this a report time
+                                 */
                                 'timestamp'     => strtotime('0:00'),
                                 'information'   => json_encode(
                                     array_merge($feedData['information'], [ 'reason' => $reason ])
@@ -291,5 +328,7 @@ class Rbl extends Collector
         } else {
             $this->warningCount++;
         }
+
+        return true;
     }
 }

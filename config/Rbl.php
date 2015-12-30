@@ -71,8 +71,10 @@ return [
                 '127.0.0.5'     => 'XBL Listing - Contains: CBL (3rd party exploits such as proxies, trojans, etc.)',
                 '127.0.0.6'     => 'XBL Listing - Contains: CBL (3rd party exploits such as proxies, trojans, etc.)',
                 '127.0.0.7'     => 'XBL Listing - Contains: CBL (3rd party exploits such as proxies, trojans, etc.)',
-                '127.0.0.10'    => 'PBL Listing - Contains: End-user Non-MTA IP addresses set by ISP outbound mail policy',
-                '127.0.0.11'    => 'PBL Listing - Contains: End-user Non-MTA IP addresses set by ISP outbound mail policy',
+                '127.0.0.10'    =>
+                    'PBL Listing - Contains: End-user Non-MTA IP addresses set by ISP outbound mail policy',
+                '127.0.0.11'    =>
+                    'PBL Listing - Contains: End-user Non-MTA IP addresses set by ISP outbound mail policy',
                 'default'       => 'SPAM Sending host'
             ],
             'method'    => 'dns',
