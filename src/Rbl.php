@@ -2,6 +2,7 @@
 
 namespace AbuseIO\Collectors;
 
+use AbuseIO\Models\Incident;
 use Validator;
 use AbuseIO\Models\Ticket;
 
@@ -303,22 +304,24 @@ class Rbl extends Collector
                                 $reason = $feedData['codes'][$result];
                             }
 
-                            $this->events[] = [
-                                'source'        => $feedName,
-                                'ip'            => $address,
-                                'domain'        => false,
-                                'uri'           => false,
-                                'class'         => $feedData['class'],
-                                'type'          => $feedData['type'],
-                                /*
-                                 * This prevents multiple events on the same day. So info
-                                 * blob has a scan time and this a report time
-                                 */
-                                'timestamp'     => strtotime('0:00'),
-                                'information'   => json_encode(
-                                    array_merge($feedData['information'], [ 'reason' => $reason ])
-                                ),
-                            ];
+                            $incident = new Incident();
+                            $incident->source      = $feedName;
+                            $incident->source_id   = false;
+                            $incident->ip          = $address;
+                            $incident->domain      = false;
+                            $incident->uri         = false;
+                            $incident->class       = $feedData['class'];
+                            $incident->type        = $feedData['type'];
+                            /*
+                             * This prevents multiple events on the same day. So info
+                             * blob has a scan time and this a report time
+                             */
+                            $incident->timestamp   = strtotime('0:00');
+                            $incident->information = json_encode(array_merge(
+                                $feedData['information'], [ 'reason' => $reason ])
+                            );
+
+                            $this->events[] = $incident;
 
                             print_r($this->events);
                         }
