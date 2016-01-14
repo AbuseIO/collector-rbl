@@ -313,17 +313,21 @@ class Rbl extends Collector
                             $incident->class       = $feedData['class'];
                             $incident->type        = $feedData['type'];
                             /*
-                             * This prevents multiple events on the same day. So info
+                             * This prevents multiple incidents on the same day. So info
                              * blob has a scan time and this a report time
                              */
                             $incident->timestamp   = strtotime('0:00');
-                            $incident->information = json_encode(array_merge(
-                                $feedData['information'], [ 'reason' => $reason ])
+                            $incident->information = json_encode(
+                                array_merge(
+                                    $feedData['information'],
+                                    [
+                                        'reason' => $reason
+                                    ]
+                                )
                             );
 
-                            $this->events[] = $incident;
+                            $this->incidents[] = $incident;
 
-                            print_r($this->events);
                         }
                     }
                 }
