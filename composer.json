@@ -1,7 +1,7 @@
 {
     "name": "abuseio/collector-rbl",
     "description": "Collector addon for handling notifications from RBL lists",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "keywords": ["laravel", "abuseio", "parser", "rbl"],
     "homepage": "http://abuse.io",
     "type": "library",
