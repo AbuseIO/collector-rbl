@@ -53,7 +53,7 @@ return [
         'Spamhaus' => [
             'zone'      => 'zen.spamhaus.org',
             'class'     => 'RBL_LISTED',
-            'type'      => 'Abuse',
+            'type'      => 'ABUSE',
             'enabled'   => true,
             'fields'    => [
                 //
@@ -83,7 +83,7 @@ return [
         'Spamcop' => [
             'zone'      => 'bl.spamcop.net',
             'class'     => 'RBL_LISTED',
-            'type'      => 'Abuse',
+            'type'      => 'ABUSE',
             'enabled'   => true,
             'fields'    => [
                 //
