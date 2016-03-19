@@ -309,7 +309,6 @@ class Rbl extends Collector
                             $incident->source_id   = false;
                             $incident->ip          = $address;
                             $incident->domain      = false;
-                            $incident->uri         = false;
                             $incident->class       = $feedData['class'];
                             $incident->type        = $feedData['type'];
                             /*
