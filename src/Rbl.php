@@ -5,6 +5,7 @@ namespace AbuseIO\Collectors;
 use AbuseIO\Models\Incident;
 use Validator;
 use AbuseIO\Models\Ticket;
+use Carbon;
 
 /**
  * Class Rbl
@@ -37,7 +38,7 @@ class Rbl extends Collector
      * @var array
      */
     protected $allowedMethods = [
-        'dns'           => false,
+        'dns'           => true,
         'file'          => true,
     ];
 
@@ -146,23 +147,23 @@ class Rbl extends Collector
             } else {
                 continue;
             }
-
-            switch($mode) {
-                case "asns":
-                    $this->scanAsn($config);
-                    break;
-                case "netblocks":
-                    $this->scanNetblock($config);
-                    break;
-                case "ipaddresses":
-                    $this->scanAddresses($config);
-                    break;
-                case "tickets":
-                    $this->scanTickets();
-                    break;
-            }
-
         }
+
+        switch($mode) {
+            case "asns":
+                $this->scanAsn($config);
+                break;
+            case "netblocks":
+                $this->scanNetblock($config);
+                break;
+            case "ipaddresses":
+                $this->scanAddresses($config);
+                break;
+            case "tickets":
+                $this->scanTickets();
+                break;
+        }
+
 
         return $this->success();
     }
@@ -263,9 +264,9 @@ class Rbl extends Collector
      */
     private function scanTickets()
     {
-        $tickets = Ticket::where('status_id', '!=', '2')->get();
+        $tickets = Ticket::where('status_id', '=', 'OPEN');
 
-        foreach ($tickets as $ticket) {
+        foreach ($tickets->get() as $ticket) {
             $this->scanAddress($ticket->ip);
         }
 
@@ -280,6 +281,12 @@ class Rbl extends Collector
      */
     private function scanAddress($address)
     {
+        /*
+         * today's timestamp used as report time (today 00:00) to prevent a lot of duplicates on the
+         * same day. Using the same time will aggregate and deduplicate events into 1 per day.
+         */
+
+
         if (!filter_var($address, FILTER_VALIDATE_IP) === false) {
             $addressReverse = implode('.', array_reverse(preg_split('/\./', $address)));
 
@@ -311,11 +318,13 @@ class Rbl extends Collector
                             $incident->domain      = false;
                             $incident->class       = $feedData['class'];
                             $incident->type        = $feedData['type'];
+
                             /*
-                             * This prevents multiple incidents on the same day. So info
-                             * blob has a scan time and this a report time
+                             * today's timestamp used as report time (today 00:00) to prevent a lot of duplicates on the
+                             * same day. Using the same time will aggregate and deduplicate events into 1 per day.
                              */
-                            $incident->timestamp   = strtotime('0:00');
+                            $incident->timestamp   = Carbon::today();
+
                             $incident->information = json_encode(
                                 array_merge(
                                     $feedData['information'],
@@ -326,7 +335,6 @@ class Rbl extends Collector
                             );
 
                             $this->incidents[] = $incident;
-
                         }
                     }
                 }
