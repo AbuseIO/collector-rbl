@@ -323,7 +323,7 @@ class Rbl extends Collector
                              * today's timestamp used as report time (today 00:00) to prevent a lot of duplicates on the
                              * same day. Using the same time will aggregate and deduplicate events into 1 per day.
                              */
-                            $incident->timestamp   = Carbon::today();
+                            $incident->timestamp   = Carbon::today()->timestamp;
 
                             $incident->information = json_encode(
                                 array_merge(
