@@ -51,20 +51,20 @@ return [
      */
     'feeds' => [
         'Spamhaus' => [
-            'zone'      => 'zen.spamhaus.org',
-            'class'     => 'RBL_LISTED',
-            'type'      => 'ABUSE',
-            'enabled'   => true,
-            'fields'    => [
+            'zone'         => 'zen.spamhaus.org',
+            'class'        => 'RBL_LISTED',
+            'type'         => 'ABUSE',
+            'enabled'      => true,
+            'fields'       => [
                 //
             ],
-            'filters'   => [
+            'filters'      => [
                 //
             ],
-            'information' => [
+            'information'  => [
                 'delisting url' => 'https://www.spamhaus.org/lookup/',
             ],
-            'codes'     => [
+            'codes'        => [
                 '127.0.0.2'     => 'SBL Listing - Contains: Direct UBE sources, spam operations & spam service',
                 '127.0.0.3'     => 'CSS Listing - Contains: Direct snowshoe spam sources detected via automation',
                 '127.0.0.4'     => 'XBL Listing - Contains: CBL (3rd party exploits such as proxies, trojans, etc.)',
@@ -77,29 +77,35 @@ return [
                     'PBL Listing - Contains: End-user Non-MTA IP addresses set by ISP outbound mail policy',
                 'default'       => 'SPAM Sending host'
             ],
-            'method'    => 'dns',
-            'zonefile'  => '',
+            'ignore_codes' => [
+                //
+            ],
+            'method'       => 'dns',
+            'zonefile'     => '',
         ],
         'Spamcop' => [
-            'zone'      => 'bl.spamcop.net',
-            'class'     => 'RBL_LISTED',
-            'type'      => 'ABUSE',
-            'enabled'   => true,
-            'fields'    => [
+            'zone'         => 'bl.spamcop.net',
+            'class'        => 'RBL_LISTED',
+            'type'         => 'ABUSE',
+            'enabled'      => true,
+            'fields'       => [
                 //
             ],
-            'filters'   => [
+            'filters'      => [
                 //
             ],
-            'information' => [
+            'information'  => [
                 'delisting url' => 'https://www.spamcop.net/bl.shtml',
             ],
-            'codes'     => [
+            'codes'        => [
                 '127.0.0.2'     => 'SCBL Listing - Contains: End-user reports, SPAM traps and other detection types',
                 'default'       => 'SPAM Sending host'
             ],
-            'method'    => 'dns',
-            'zonefile'  => '',
+            'ignore_codes' => [
+                //
+            ],
+            'method'       => 'dns',
+            'zonefile'     => '',
         ],
     ],
 ];
