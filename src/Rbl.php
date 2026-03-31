@@ -69,6 +69,7 @@ class Rbl extends Collector
         'filters'       => 'sometimes|array',
         'information'   => 'sometimes|array',
         'codes'         => 'required|array',
+        'ignore_codes'  => 'sometimes|array',
         'method'        => 'required|string',
         'zonefile'      => 'sometimes|file',
     ];
@@ -298,6 +299,11 @@ class Rbl extends Collector
 
                     if ($result = gethostbyname($lookup)) {
                         if ($result != $lookup) {
+                            // Stop processing if result on ignore_codes list
+                            if (array_key_exists($result, $feedData['ignore_codes'])) {
+                               continue;
+                            }
+
                             // If config is empty, we fall back to this
                             $reason = 'SPAM Sending host';
 
